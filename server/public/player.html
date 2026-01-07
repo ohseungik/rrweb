@@ -122,7 +122,8 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            overflow: auto;
+            padding: 20px;
         }
 
         .logs-panel {
@@ -139,6 +140,12 @@
             background: #2d2d2d;
             border-bottom: 1px solid #333;
             display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .logs-header-top {
+            display: flex;
             justify-content: space-between;
             align-items: center;
         }
@@ -146,6 +153,26 @@
         .logs-header h2 {
             font-size: 16px;
             font-weight: 600;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus {
+            border-color: #007acc;
+        }
+
+        .search-box::placeholder {
+            color: #858585;
         }
 
         .filter-buttons {
@@ -226,6 +253,9 @@
             background: #1e1e1e;
             border-radius: 3px;
             font-size: 11px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .log-details .key {
@@ -372,11 +402,24 @@
         .rr-player {
             width: 100% !important;
             height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
 
         .replayer-wrapper {
-            width: 100% !important;
-            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        
+        .replayer-wrapper > iframe {
+            margin: 0 auto !important;
+        }
+
+        /* 플레이어 컨트롤러 전체 숨기기 */
+        .rr-controller {
+            display: none !important;
         }
     </style>
 </head>
@@ -406,13 +449,16 @@
 
         <div class="logs-panel">
             <div class="logs-header">
-                <h2>📊 Logs & Network</h2>
-                <div class="filter-buttons">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="console">Console</button>
-                    <button class="filter-btn" data-filter="network">Network</button>
-                    <button class="filter-btn" data-filter="error">Errors</button>
+                <div class="logs-header-top">
+                    <h2>📊 Logs & Network</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="console">Console</button>
+                        <button class="filter-btn" data-filter="network">Network</button>
+                        <button class="filter-btn" data-filter="error">Errors</button>
+                    </div>
                 </div>
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 검색어를 입력하세요..." />
             </div>
             <div class="logs-content" id="logsContent">
                 <div class="empty-state">로그가 없습니다</div>
@@ -438,6 +484,7 @@
     <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>
     <script>
         let currentFilter = 'all';
+        let searchKeyword = '';
         let allLogs = [];
         let playerInstance = null;
 
@@ -478,6 +525,12 @@
                 currentFilter = e.target.dataset.filter;
                 renderLogs();
             });
+        });
+
+        // 검색 기능
+        document.getElementById('searchBox').addEventListener('input', (e) => {
+            searchKeyword = e.target.value.toLowerCase();
+            renderLogs();
         });
 
         // 파일 선택
@@ -576,8 +629,8 @@
                     target: playerContainer,
                     props: {
                         events,
-                        width: playerContainer.offsetWidth,
-                        height: playerContainer.offsetHeight,
+                        width: playerContainer.offsetWidth - 40,
+                        height: playerContainer.offsetHeight - 40,
                         autoPlay: false,
                         showController: true,
                         speedOption: [1, 2, 4, 8],
@@ -611,10 +664,21 @@
             }
 
             const filteredLogs = allLogs.filter(log => {
-                if (currentFilter === 'all') return true;
-                if (currentFilter === 'console') return log.type.startsWith('console.');
-                if (currentFilter === 'network') return log.type.startsWith('network.');
-                if (currentFilter === 'error') return log.type.includes('error') || log.type === 'unhandledRejection';
+                // 타입 필터
+                let passFilter = false;
+                if (currentFilter === 'all') passFilter = true;
+                else if (currentFilter === 'console') passFilter = log.type.startsWith('console.');
+                else if (currentFilter === 'network') passFilter = log.type.startsWith('network.');
+                else if (currentFilter === 'error') passFilter = log.type.includes('error') || log.type === 'unhandledRejection';
+                
+                if (!passFilter) return false;
+                
+                // 검색어 필터
+                if (searchKeyword) {
+                    const searchableContent = JSON.stringify(log).toLowerCase();
+                    return searchableContent.includes(searchKeyword);
+                }
+                
                 return true;
             });
 
@@ -645,7 +709,7 @@
                         <span class="log-timestamp">${time}</span>
                         <span class="network-method method-${method}">${method}</span>
                         <div class="log-message">${log.data.url}</div>
-                        ${log.data.body ? `<div class="log-details"><span class="key">Body:</span> ${truncate(String(log.data.body), 200)}</div>` : ''}
+                        ${log.data.body ? `<div class="log-details"><span class="key">Body:</span> ${truncate(String(log.data.body), 10000)}</div>` : ''}
                     </div>
                 `;
             } else if (log.type === 'network.response') {
@@ -658,7 +722,7 @@
                         <div class="log-message">${log.data.url}</div>
                         <div class="log-details">
                             <span class="key">Duration:</span> ${log.data.duration}ms
-                            ${log.data.response ? `<br><span class="key">Response:</span> ${truncate(String(log.data.response), 200)}` : ''}
+                            ${log.data.response ? `<br><span class="key">Response:</span> ${truncate(String(log.data.response), 10000)}` : ''}
                         </div>
                     </div>
                 `;

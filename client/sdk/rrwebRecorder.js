@@ -42,8 +42,8 @@ function saveEventsToStorage(eventsToSave) {
 // 저장소에 로그 저장
 function saveLogsToStorage(logsToSave) {
   try {
-    // 최대 1000개까지만 저장
-    const trimmedLogs = logsToSave.slice(-1000);
+    // 최대 10000개까지만 저장
+    const trimmedLogs = logsToSave.slice(-10000);
     sessionStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(trimmedLogs));
   } catch (e) {
     console.error('Failed to save logs to storage:', e);
@@ -188,7 +188,7 @@ function interceptXHR() {
             url: xhr._rrweb_url,
             status: xhr.status,
             statusText: xhr.statusText,
-            response: xhr.responseText ? xhr.responseText.substring(0, 1000) : null, // 처음 1000자만
+            response: xhr.responseText ? xhr.responseText.substring(0, 10000) : null, // 처음 10000자만
             duration: duration,
             timestamp: Date.now()
           });
@@ -235,7 +235,7 @@ function interceptFetch() {
             url: typeof url === 'string' ? url : url.url,
             status: response.status,
             statusText: response.statusText,
-            response: responseText ? responseText.substring(0, 1000) : null, // 처음 1000자만
+            response: responseText ? responseText.substring(0, 10000) : null, // 처음 10000자만
             duration: duration,
             timestamp: Date.now()
           });
