@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rrweb Session Player</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: none;
+            font-size: 14px;
+        }
+
+        .file-input:hover {
+            background: #45a049;
+        }
+
+        .file-input input {
+            display: none;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #1976D2;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-play {
+            background: #4CAF50;
+        }
+
+        .btn-play:hover:not(:disabled) {
+            background: #45a049;
+        }
+
+        .btn-pause {
+            background: #ff9800;
+        }
+
+        .btn-pause:hover:not(:disabled) {
+            background: #f57c00;
+        }
+
+        .btn-restart {
+            background: #9c27b0;
+        }
+
+        .btn-restart:hover:not(:disabled) {
+            background: #7b1fa2;
+        }
+
+        .session-info {
+            flex: 1;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .player-container {
+            flex: 1;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logs-panel {
+            width: 400px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #333;
+        }
+
+        .logs-header {
+            padding: 15px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logs-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .filter-btn {
+            padding: 4px 8px;
+            background: #3c3c3c;
+            border: none;
+            border-radius: 3px;
+            color: #d4d4d4;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #4c4c4c;
+        }
+
+        .filter-btn.active {
+            background: #007acc;
+            color: white;
+        }
+
+        .logs-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #252526;
+            border-radius: 3px;
+            border-left: 3px solid #555;
+        }
+
+        .log-entry.console-log { border-left-color: #4CAF50; }
+        .log-entry.console-error { border-left-color: #f44336; }
+        .log-entry.console-warn { border-left-color: #ff9800; }
+        .log-entry.console-info { border-left-color: #2196F3; }
+        .log-entry.network-request { border-left-color: #9c27b0; }
+        .log-entry.network-response { border-left-color: #00bcd4; }
+        .log-entry.network-error { border-left-color: #ff5722; }
+        .log-entry.error { border-left-color: #e91e63; }
+
+        .log-timestamp {
+            color: #858585;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #3c3c3c;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 8px;
+            text-transform: uppercase;
+        }
+
+        .log-message {
+            margin-top: 4px;
+            color: #d4d4d4;
+            word-break: break-word;
+        }
+
+        .log-details {
+            margin-top: 6px;
+            padding: 6px;
+            background: #1e1e1e;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .log-details .key {
+            color: #9cdcfe;
+        }
+
+        .log-details .value {
+            color: #ce9178;
+        }
+
+        .network-method {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-right: 6px;
+        }
+
+        .method-GET { background: #4CAF50; color: white; }
+        .method-POST { background: #2196F3; color: white; }
+        .method-PUT { background: #ff9800; color: white; }
+        .method-DELETE { background: #f44336; color: white; }
+
+        .status-code {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-right: 6px;
+        }
+
+        .status-2xx { background: #4CAF50; color: white; }
+        .status-3xx { background: #2196F3; color: white; }
+        .status-4xx { background: #ff9800; color: white; }
+        .status-5xx { background: #f44336; color: white; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        /* 세션 목록 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .session-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .session-item {
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .session-item:hover {
+            background: #f5f5f5;
+        }
+
+        .session-item-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .session-item-info {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .logs-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .logs-content::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        .logs-content::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 4px;
+        }
+
+        .logs-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* rrweb player wrapper */
+        .rr-player {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .replayer-wrapper {
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎥 rrweb Session Player</h1>
+        <div class="controls">
+            <label class="file-input">
+                <input type="file" id="fileInput" accept=".json" />
+                📂 파일 선택
+            </label>
+            <button class="btn" id="sessionListBtn">📋 세션 목록</button>
+            <button class="btn btn-play" id="playBtn" disabled>▶️ 재생</button>
+            <button class="btn btn-pause" id="pauseBtn" disabled>⏸️ 일시정지</button>
+            <button class="btn btn-restart" id="restartBtn" disabled>🔄 처음부터</button>
+            <div class="session-info" id="sessionInfo">세션 파일을 선택하세요</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="player-container" id="playerContainer">
+            <div class="empty-state">
+                <h3>세션을 로드하려면 파일을 선택하세요</h3>
+                <p>📂 파일 선택 또는 📋 세션 목록을 클릭하세요</p>
+            </div>
+        </div>
+
+        <div class="logs-panel">
+            <div class="logs-header">
+                <h2>📊 Logs & Network</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="console">Console</button>
+                    <button class="filter-btn" data-filter="network">Network</button>
+                    <button class="filter-btn" data-filter="error">Errors</button>
+                </div>
+            </div>
+            <div class="logs-content" id="logsContent">
+                <div class="empty-state">로그가 없습니다</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 세션 목록 모달 -->
+    <div class="modal" id="sessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📋 저장된 세션 목록</h2>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="session-list" id="sessionList">
+                    <div class="empty-state">로딩 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>
+    <script>
+        let currentFilter = 'all';
+        let allLogs = [];
+        let playerInstance = null;
+
+        // 컨트롤 버튼 활성화/비활성화
+        function updateControls(enabled) {
+            document.getElementById('playBtn').disabled = !enabled;
+            document.getElementById('pauseBtn').disabled = !enabled;
+            document.getElementById('restartBtn').disabled = !enabled;
+        }
+
+        // 재생 버튼
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (playerInstance) {
+                playerInstance.play();
+            }
+        });
+
+        // 일시정지 버튼
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            if (playerInstance) {
+                playerInstance.pause();
+            }
+        });
+
+        // 처음부터 버튼
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            if (playerInstance) {
+                playerInstance.goto(0);
+                playerInstance.play();
+            }
+        });
+
+        // 필터 버튼
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                renderLogs();
+            });
+        });
+
+        // 파일 선택
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    loadSession(data);
+                } catch (error) {
+                    alert('파일을 읽을 수 없습니다: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // 세션 목록 버튼
+        document.getElementById('sessionListBtn').addEventListener('click', () => {
+            loadSessionList();
+            document.getElementById('sessionModal').classList.add('active');
+        });
+
+        // 모달 닫기
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('sessionModal').classList.remove('active');
+        });
+
+        // 세션 목록 로드
+        async function loadSessionList() {
+            const sessionList = document.getElementById('sessionList');
+            sessionList.innerHTML = '<div class="empty-state">로딩 중...</div>';
+
+            try {
+                const response = await fetch('/api/sessions');
+                const sessions = await response.json();
+
+                if (sessions.length === 0) {
+                    sessionList.innerHTML = '<div class="empty-state">저장된 세션이 없습니다</div>';
+                    return;
+                }
+
+                sessionList.innerHTML = sessions.map(session => `
+                    <div class="session-item" data-filename="${session.filename}">
+                        <div class="session-item-name">${session.filename}</div>
+                        <div class="session-item-info">
+                            📅 ${new Date(session.created).toLocaleString()} | 
+                            📦 ${formatBytes(session.size)}
+                        </div>
+                    </div>
+                `).join('');
+
+                // 세션 클릭 이벤트
+                document.querySelectorAll('.session-item').forEach(item => {
+                    item.addEventListener('click', async () => {
+                        const filename = item.dataset.filename;
+                        await loadSessionFromServer(filename);
+                        document.getElementById('sessionModal').classList.remove('active');
+                    });
+                });
+            } catch (error) {
+                sessionList.innerHTML = '<div class="empty-state">세션 목록을 불러올 수 없습니다</div>';
+                console.error('Failed to load session list:', error);
+            }
+        }
+
+        // 서버에서 세션 로드
+        async function loadSessionFromServer(filename) {
+            try {
+                const response = await fetch(`/api/sessions/${filename}`);
+                const data = await response.json();
+                loadSession(data);
+            } catch (error) {
+                alert('세션을 불러올 수 없습니다: ' + error.message);
+            }
+        }
+
+        function loadSession(data) {
+            const { events, logs, sessionInfo } = data;
+
+            const eventCount = events?.length || 0;
+            const logCount = logs?.length || 0;
+            const timestamp = new Date(sessionInfo?.timestamp || Date.now()).toLocaleString();
+            
+            document.getElementById('sessionInfo').innerHTML = `
+                📅 ${timestamp} | 🎬 ${eventCount}개 이벤트 | 📊 ${logCount}개 로그
+            `;
+
+            const playerContainer = document.getElementById('playerContainer');
+            playerContainer.innerHTML = '';
+
+            if (events && events.length > 0) {
+                playerInstance = new rrwebPlayer({
+                    target: playerContainer,
+                    props: {
+                        events,
+                        width: playerContainer.offsetWidth,
+                        height: playerContainer.offsetHeight,
+                        autoPlay: false,
+                        showController: true,
+                        speedOption: [1, 2, 4, 8],
+                    },
+                });
+
+                // 컨트롤 버튼 활성화
+                updateControls(true);
+
+                // 자동으로 첫 프레임으로 이동
+                setTimeout(() => {
+                    if (playerInstance) {
+                        playerInstance.goto(0);
+                    }
+                }, 100);
+            } else {
+                playerContainer.innerHTML = '<div class="empty-state"><h3>재생할 이벤트가 없습니다</h3></div>';
+                updateControls(false);
+            }
+
+            allLogs = logs || [];
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const logsContent = document.getElementById('logsContent');
+            
+            if (allLogs.length === 0) {
+                logsContent.innerHTML = '<div class="empty-state">로그가 없습니다</div>';
+                return;
+            }
+
+            const filteredLogs = allLogs.filter(log => {
+                if (currentFilter === 'all') return true;
+                if (currentFilter === 'console') return log.type.startsWith('console.');
+                if (currentFilter === 'network') return log.type.startsWith('network.');
+                if (currentFilter === 'error') return log.type.includes('error') || log.type === 'unhandledRejection';
+                return true;
+            });
+
+            if (filteredLogs.length === 0) {
+                logsContent.innerHTML = '<div class="empty-state">필터된 로그가 없습니다</div>';
+                return;
+            }
+
+            logsContent.innerHTML = filteredLogs.map(log => renderLogEntry(log)).join('');
+        }
+
+        function renderLogEntry(log) {
+            const time = new Date(log.timestamp).toLocaleTimeString();
+            const typeClass = log.type.replace('.', '-');
+            
+            if (log.type.startsWith('console.')) {
+                return `
+                    <div class="log-entry ${typeClass}">
+                        <span class="log-timestamp">${time}</span>
+                        <span class="log-type">${log.data.level}</span>
+                        <div class="log-message">${log.data.message.join(' ')}</div>
+                    </div>
+                `;
+            } else if (log.type === 'network.request') {
+                const method = log.data.method || 'GET';
+                return `
+                    <div class="log-entry ${typeClass}">
+                        <span class="log-timestamp">${time}</span>
+                        <span class="network-method method-${method}">${method}</span>
+                        <div class="log-message">${log.data.url}</div>
+                        ${log.data.body ? `<div class="log-details"><span class="key">Body:</span> ${truncate(String(log.data.body), 200)}</div>` : ''}
+                    </div>
+                `;
+            } else if (log.type === 'network.response') {
+                const status = log.data.status;
+                const statusClass = status < 300 ? '2xx' : status < 400 ? '3xx' : status < 500 ? '4xx' : '5xx';
+                return `
+                    <div class="log-entry ${typeClass}">
+                        <span class="log-timestamp">${time}</span>
+                        <span class="status-code status-${statusClass}">${status}</span>
+                        <div class="log-message">${log.data.url}</div>
+                        <div class="log-details">
+                            <span class="key">Duration:</span> ${log.data.duration}ms
+                            ${log.data.response ? `<br><span class="key">Response:</span> ${truncate(String(log.data.response), 200)}` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (log.type === 'error' || log.type === 'unhandledRejection') {
+                return `
+                    <div class="log-entry error">
+                        <span class="log-timestamp">${time}</span>
+                        <span class="log-type">ERROR</span>
+                        <div class="log-message">${log.data.message || log.data.reason}</div>
+                        ${log.data.stack ? `<div class="log-details">${escapeHtml(log.data.stack)}</div>` : ''}
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function truncate(str, length) {
+            return str.length > length ? str.substring(0, length) + '...' : str;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
